@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "ha_aramark_menu"
+version = "0.1.0"
+description = ""
+authors = ["MARZ Manuel <manuel.marz@urbanandmainlines.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+requests = "^2.31.0"
+paho-mqtt = "^1.6.1"
+
+[tool.poetry.scripts]
+send = 'ha_aramark_menu.app:main'
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
