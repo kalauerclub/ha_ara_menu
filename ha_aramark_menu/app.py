@@ -1,8 +1,8 @@
 import re
 import os
-import json
 import requests
 import paho.mqtt.client as mqtt
+
 
 def get_custom_config(file_location):
     with open(file_location, "r") as config_file:
@@ -12,11 +12,14 @@ def get_custom_config(file_location):
             config[key_value_pair[0]] = key_value_pair[1]
     return config
 
+
 # opening and extracing contents from config file
-config_file_location = os.getenv("ARAMARKCONFIG") # for this to work you need to MAKE an environment variable called ARAMARKCONFIG with the value exact filepath to your config
+config_file_location = os.getenv(
+    "ARAMARKCONFIG"
+)  # for this to work you need to MAKE an environment variable called ARAMARKCONFIG with the value exact filepath to your config
 if config_file_location:
     ara_config = get_custom_config(config_file_location)
-    
+
     broker = ara_config["broker"]
     port = int(ara_config["port"])
     topic_prefix = ara_config["topic_prefix"]
@@ -24,17 +27,22 @@ if config_file_location:
     base_url = ara_config["base_url"]
     menu_id = ara_config["menu_id"]
 else:
-    raise RuntimeError('environment variable not found: ARAMARKCONFIG is probably undefined')
+    raise RuntimeError(
+        "environment variable not found: ARAMARKCONFIG is probably undefined"
+    )
+
 
 def main():
     aramark_menu = get_aramark_menu()
     main_categories = get_main_categories(aramark_menu)
+    pommes_bool = get_pommes_bool(aramark_menu)
 
     client = connect_mqtt()
     # loop_start > loop_forever | loop_forever is blocking till the client calls disconnect vs loop_start runs in a background thread
     client.loop_start()
 
     send_all_dishes(client=client, categories=main_categories)
+    send_pommes_bool(client=client, pommes_bool=pommes_bool)
 
     # don't even know if I need to call this when useing loop_start and loop_stop but doing it anyways just in case
     client.disconnect()
@@ -65,6 +73,14 @@ def send_all_dishes(client, categories):
                 send_message.wait_for_publish()
 
 
+def send_pommes_bool(client, pommes_bool):
+    for key, value in pommes_bool.items():
+        topic = topic_prefix + key
+        print(topic, value)  # TEMP
+        send_message = client.publish(topic, value)
+        send_message.wait_for_publish()
+
+
 def get_aramark_menu():
     response = requests.get(
         base_url + menu_id,
@@ -91,28 +107,33 @@ def get_main_categories(json_data):
 
     klassik_mix = {
         "name": klassik_mix_data["Products"][0]["Name"],
-        "price": (klassik_mix_data["Products"][0]["Prices"][0]["LocalizablePrice"][
-            "Amount"
-        ] / 100),
+        "price": (
+            klassik_mix_data["Products"][0]["Prices"][0]["LocalizablePrice"]["Amount"]
+            / 100
+        ),
         "topic": "klassik-mix",
     }
     food_factory = {
         "name": food_factory_data["Products"][0]["Name"],
-        "price": (food_factory_data["Products"][0]["Prices"][0]["LocalizablePrice"][
-            "Amount"
-        ] / 100),
+        "price": (
+            food_factory_data["Products"][0]["Prices"][0]["LocalizablePrice"]["Amount"]
+            / 100
+        ),
         "topic": "food-factory",
     }
     v_like = {
         "name": v_like_data["Products"][0]["Name"],
-        "price": (v_like_data["Products"][0]["Prices"][0]["LocalizablePrice"]["Amount"] / 100),
+        "price": (
+            v_like_data["Products"][0]["Prices"][0]["LocalizablePrice"]["Amount"] / 100
+        ),
         "topic": "v-like",
     }
     worldtour = {
         "name": worldtour_data["Products"][0]["Name"],
-        "price": (worldtour_data["Products"][0]["Prices"][0]["LocalizablePrice"][
-            "Amount"
-        ] / 100),
+        "price": (
+            worldtour_data["Products"][0]["Prices"][0]["LocalizablePrice"]["Amount"]
+            / 100
+        ),
         "topic": "worldtour",
     }
     return (klassik_mix, food_factory, v_like, worldtour)
@@ -124,7 +145,9 @@ def get_pommes_bool(json_data):
         for product in category["Products"]:
             if re.match(r"Pommes", product["Name"]):
                 boolean = True
-    return boolean
+    return {
+        "pommes": boolean,
+    }
 
 
 if __name__ == "__main__":
